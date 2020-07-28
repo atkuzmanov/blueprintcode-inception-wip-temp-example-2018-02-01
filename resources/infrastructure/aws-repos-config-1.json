@@ -1,0 +1,7 @@
+{
+  "scl": {
+    "url": "http:\/\/mirror.centos.org\/centos\/6\/sclo\/x86_64\/rh\/",
+    "gpg_key": "-----BEGIN PGP PUBLIC KEY BLOCK-----\n[PUT-PUBLIC-KEY-HASH-IN-HERE]\n-----END PGP PUBLIC KEY BLOCK-----\n",
+    "type": "direct"
+  }
+}

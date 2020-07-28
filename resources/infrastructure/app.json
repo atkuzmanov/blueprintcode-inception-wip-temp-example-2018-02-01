@@ -1,0 +1,423 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "blueprintcode-template main CloudFormation application stack",
+    "Parameters": {
+        "Environment": {
+            "Type": "String",
+            "Description": "The name of the environment. Integration, Testing, Staging or LiveProduction"
+        },
+        "DomainNameBase": {
+            "Default": "example.com.",
+            "Type": "String",
+            "Description": "Base domain name, ending with a '.', under which new DNS entries are added."
+        },
+        "DomainNameBaseWithEnvironment": {
+            "Description": "Base domain name with environment added if environment is a non live environment, ending with a '.', under which new DNS entries are added.",
+            "Default": "example.com.",
+            "Type": "String"
+        },
+        "VpcId": {
+            "Type": "String",
+            "Description": "The Id of the VPC to attach the environment to."
+        },
+        "CnameEntry": {
+            "Type": "String",
+            "Description": "The cname entry for the component."
+        },
+        "ImageId": {
+            "Type": "String",
+            "Description": "The AMI to use for this component."
+        },
+        "MinSize": {
+            "Default": "2",
+            "Type": "String",
+            "Description": "The minimum number of EC2 instances."
+        },
+        "MaxSize": {
+            "Default": "2",
+            "Type": "String",
+            "Description": "The maximum number of instances."
+        },
+        "KeyName": {
+            "Type": "String",
+            "Description": "Name of existing EC2 keypair to enable SSH access to the created instances."
+        },
+        "BastionAccessSecurityGroup": {
+            "Type": "String",
+            "Description": "The security group that allows access from the bastions."
+        },
+        "PublicSubnet1Id": {
+            "Type": "String",
+            "Description": "The id of public subnet 1."
+        },
+        "PublicSubnet2Id": {
+            "Type": "String",
+            "Description": "The id of public subnet 2."
+        },
+        "PublicSubnet3Id": {
+            "Type": "String",
+            "Description": "The id of public subnet 3."
+        },
+        "PrivateSubnet1Id": {
+            "Type": "String",
+            "Description": "The id of private subnet 1."
+        },
+        "PrivateSubnet2Id": {
+            "Type": "String",
+            "Description": "The id of private subnet 2."
+        },
+        "PrivateSubnet3Id": {
+            "Type": "String",
+            "Description": "The id of private subnet 3."
+        },
+        "UpdateMinInService": {
+            "Default": "0",
+            "Type": "String",
+            "Description": "The minimum number of instances in service during an ASG update."
+        },
+        "UpdateMaxBatchSize": {
+            "Default": "1",
+            "Type": "String",
+            "Description": "The maximum number of instances to be killed at one time during an ASG update."
+        },
+        "UpdatePauseTime": {
+            "Default": "PT3M",
+            "Type": "String",
+            "Description": "The time to wait between new instances coming online and the next batch being killed during an ASG update."
+        },
+        "InstanceType": {
+            "Default": "t2.nano",
+            "Type": "String",
+            "Description": "The size of the EC2 instances."
+        }
+    },
+    "Resources": {
+        "LoadBalancerSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "SecurityGroupIngress": [
+                    {
+                        "ToPort": "443",
+                        "IpProtocol": "tcp",
+                        "FromPort": "443",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "VpcId"
+                },
+                "GroupDescription": "An ELB group allowing access only to from the corresponding component"
+            }
+        },
+        "ComponentAutoScalingGroup": {
+            "Type": "AWS::AutoScaling::AutoScalingGroup",
+            "UpdatePolicy": {
+                "AutoScalingRollingUpdate": {
+                    "PauseTime": {
+                        "Ref": "UpdatePauseTime"
+                    },
+                    "MaxBatchSize": {
+                        "Ref": "UpdateMaxBatchSize"
+                    },
+                    "MinInstancesInService": {
+                        "Ref": "UpdateMinInService"
+                    }
+                }
+            },
+            "Properties": {
+                "LoadBalancerNames": [
+                    {
+                        "Ref": "ComponentElasticLoadBalancer"
+                    }
+                ],
+                "MinSize": {
+                    "Ref": "MinSize"
+                },
+                "MaxSize": {
+                    "Ref": "MaxSize"
+                },
+                "VPCZoneIdentifier": [
+                    {
+                        "Ref": "PrivateSubnet1Id"
+                    },
+                    {
+                        "Ref": "PrivateSubnet2Id"
+                    },
+                    {
+                        "Ref": "PrivateSubnet3Id"
+                    }
+                ],
+                "LaunchConfigurationName": {
+                    "Ref": "ComponentLaunchConfiguration"
+                },
+                "AvailabilityZones": [
+                    "eu-west-1a",
+                    "eu-west-1b",
+                    "eu-west-1c"
+                ],
+                "HealthCheckType": "ELB",
+                "HealthCheckGracePeriod": 180,
+                "Tags": [
+                    {
+                        "Value": "blueprintcode-template",
+                        "PropagateAtLaunch": true,
+                        "Key": "ExampleProject"
+                    },
+                    {
+                        "Value": {
+                            "Ref": "Environment"
+                        },
+                        "PropagateAtLaunch": true,
+                        "Key": "ExampleEnvironmentKey"
+                    },
+                    {
+                        "Value": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    {
+                                        "Ref": "Environment"
+                                    },
+                                    "blueprintcode-template"
+                                ]
+                            ]
+                        },
+                        "PropagateAtLaunch": true,
+                        "Key": "Name"
+                    },
+                    {
+                        "Value": "blueprintcode-template",
+                        "PropagateAtLaunch": true,
+                        "Key": "ExampleComponent"
+                    }
+                ]
+            }
+        },
+        "ComponentElasticLoadBalancer": {
+            "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+            "Properties": {
+                "Subnets": [
+                    {
+                        "Ref": "PublicSubnet1Id"
+                    },
+                    {
+                        "Ref": "PublicSubnet2Id"
+                    },
+                    {
+                        "Ref": "PublicSubnet3Id"
+                    }
+                ],
+                "Listeners": [
+                    {
+                        "InstancePort": "7443",
+                        "LoadBalancerPort": "443",
+                        "Protocol": "tcp",
+                        "InstanceProtocol": "tcp"
+                    }
+                ],
+                "SecurityGroups": [
+                    {
+                        "Ref": "LoadBalancerSecurityGroup"
+                    }
+                ],
+                "HealthCheck": {
+                    "HealthyThreshold": "3",
+                    "Interval": "15",
+                    "Target": "HTTP:7080/status",
+                    "Timeout": "10",
+                    "UnhealthyThreshold": "3"
+                },
+                "ConnectionDrainingPolicy": {
+                    "Enabled": "true",
+                    "Timeout": "30"
+                },
+                "CrossZone": true
+            }
+        },
+        "ComponentLaunchConfiguration": {
+            "Type": "AWS::AutoScaling::LaunchConfiguration",
+            "Properties": {
+                "ImageId": {
+                    "Ref": "ImageId"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "EbsOptimized": false,
+                "SecurityGroups": [
+                    {
+                        "Ref": "BastionAccessSecurityGroup"
+                    },
+                    {
+                        "Ref": "ComponentSecurityGroup"
+                    }
+                ],
+                "IamInstanceProfile": {
+                    "Ref": "ComponentInstanceProfile"
+                },
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                }
+            }
+        },
+        "ComponentInstanceProfile": {
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties": {
+                "Path": "/",
+                "Roles": [
+                    {
+                        "Ref": "ComponentRole"
+                    }
+                ]
+            }
+        },
+        "ComponentScalingPolicy": {
+            "Type": "AWS::AutoScaling::ScalingPolicy",
+            "Properties": {
+                "ScalingAdjustment": 1,
+                "AutoScalingGroupName": {
+                    "Ref": "ComponentAutoScalingGroup"
+                },
+                "AdjustmentType": "ChangeInCapacity"
+            }
+        },
+        "ComponentDNS": {
+            "Type": "AWS::Route53::RecordSet",
+            "Properties": {
+                "HostedZoneName": {
+                    "Ref": "DomainNameBase"
+                },
+                "Name": {
+                    "Fn::Join": [
+                        ".",
+                        [
+                            {
+                                "Ref": "CnameEntry"
+                            },
+                            {
+                                "Ref": "DomainNameBaseWithEnvironment"
+                            }
+                        ]
+                    ]
+                },
+                "Type": "CNAME",
+                "ResourceRecords": [
+                    {
+                        "Fn::GetAtt": [
+                            "ComponentElasticLoadBalancer",
+                            "DNSName"
+                        ]
+                    }
+                ],
+                "TTL": "60"
+            }
+        },
+        "ComponentPolicy": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyName": "ComponentPolicy",
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Resource": [
+                                "*"
+                            ],
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Action": [
+                                "cloudwatch:*"
+                            ],
+                            "Resource": [
+                                "*"
+                            ],
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Action": [
+                                "cloudformation:Describe*"
+                            ],
+                            "Resource": [
+                                "*"
+                            ],
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Action": [
+                                "ec2:Describe*"
+                            ],
+                            "Resource": [
+                                "*"
+                            ],
+                            "Effect": "Allow"
+                        }
+                    ]
+                },
+                "Roles": [
+                    {
+                        "Ref": "ComponentRole"
+                    }
+                ]
+            }
+        },
+        "ComponentSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "SecurityGroupIngress": [
+                    {
+                        "ToPort": "7080",
+                        "IpProtocol": "tcp",
+                        "SourceSecurityGroupId": {
+                            "Ref": "LoadBalancerSecurityGroup"
+                        },
+                        "FromPort": "7080"
+                    },
+                    {
+                        "ToPort": "7443",
+                        "IpProtocol": "tcp",
+                        "SourceSecurityGroupId": {
+                            "Ref": "LoadBalancerSecurityGroup"
+                        },
+                        "FromPort": "7443"
+                    },
+                    {
+                        "ToPort": "123",
+                        "IpProtocol": "udp",
+                        "SourceSecurityGroupId": {
+                            "Ref": "LoadBalancerSecurityGroup"
+                        },
+                        "FromPort": "123"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "VpcId"
+                },
+                "GroupDescription": "A component security group allowing access only from the corresponding ELB."
+            }
+        },
+        "ComponentRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "Path": "/",
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "ec2.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

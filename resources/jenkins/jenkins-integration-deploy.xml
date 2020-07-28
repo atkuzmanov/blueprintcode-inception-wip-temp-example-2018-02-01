@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+  <actions/>
+  <description>Job to deploy EntityName to integration environment.</description>
+  <logRotator class="hudson.tasks.LogRotator">
+    <daysToKeep>-3</daysToKeep>
+    <numToKeep>5</numToKeep>
+    <artifactDaysToKeep>-1</artifactDaysToKeep>
+    <artifactNumToKeep>-1</artifactNumToKeep>
+  </logRotator>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@2.3.5">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <url>git@github.com:exampleGithubOrganisationName/EntityName.git</url>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>*/master</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <submoduleCfg class="list"/>
+    <extensions/>
+  </scm>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <jdk>(Default)</jdk>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>set +e
+
+export EXAMPLE_CERT=/etc/pki/tls/exampleCert.crt
+export EXAMPLE_CERT_KEY=/etc/pki/tls/private/exampleCertKey.key
+
+example-deploy-command EntityName int -f
+example-deploy-command deploy-progress EntityName int
+
+RETVAL=$?
+exit $RETVAL
+
+</command>
+    </hudson.tasks.Shell>
+    <hudson.plugins.groovy.SystemGroovy plugin="groovy@1.27">
+      <scriptSource class="hudson.plugins.groovy.StringScriptSource">
+        <command>import hudson.model.*
+
+item = Hudson.instance.items.find { it.name == 'EntityName-rpm' }
+
+if(!item.isBuilding()) {
+    println("Wiping out Jenkins workspace of job " + item.name)
+    item.doDoWipeOutWorkspace()
+  } else {
+    println("Skipping job " + item.name + ",as its currently building")
+ }</command>
+      </scriptSource>
+      <bindings/>
+      <classpath/>
+    </hudson.plugins.groovy.SystemGroovy>
+  </builders>
+  <buildWrappers>
+    <org.jenkinsci.plugin.Diskcheck plugin="diskcheck@0.26">
+      <failOnError>false</failOnError>
+    </org.jenkinsci.plugin.Diskcheck>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@0.4.1">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
+  </buildWrappers>
+</project>
+
+

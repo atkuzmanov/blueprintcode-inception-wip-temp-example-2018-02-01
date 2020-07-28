@@ -1,0 +1,60 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Parameters": {
+    "EntityName": {
+      "Type": "String",
+      "Description": "Your component name."
+    },
+    "Environment": {
+      "Default": ".",
+      "Type": "String",
+      "Description": "Environment name with leading and trailing dots (e.g. '.integration.', '.testing.'). For your production-live component use '.' instead of '.production.'."
+    },
+    "HostedZoneName": {
+      "AllowedPattern": ".*\\.",
+      "Type": "String",
+      "Description": "Domain to use with trailing dot (e.g. 'example.com.')."
+    },
+    "Backend": {
+      "Type": "String",
+      "Description": "Backend hostname for the component (e.g. '[component-name].[environment.]account-identifier.xhst.example.com')."
+    }
+  },
+  "Resources": {
+    "RecordSetGroup": {
+      "Type": "AWS::Route53::RecordSetGroup",
+      "Properties": {
+        "HostedZoneName": {
+          "Ref": "HostedZoneName"
+        },
+        "RecordSets": [
+          {
+            "ResourceRecords": [
+              {
+                "Ref": "Backend"
+              }
+            ],
+            "Type": "CNAME",
+            "Name": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Ref": "EntityName"
+                  },
+                  {
+                    "Ref": "Environment"
+                  },
+                  {
+                    "Ref": "HostedZoneName"
+                  }
+                ]
+              ]
+            },
+            "TTL": "3600"
+          }
+        ]
+      }
+    }
+  }
+}

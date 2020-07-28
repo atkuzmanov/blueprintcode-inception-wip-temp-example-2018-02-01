@@ -1,0 +1,19 @@
+{
+  "int": {
+    "aws_account_id": "account-id",
+    "parameters": {
+      "BastionAccessSecurityGroup": "sg-1234567",
+      "DomainNameBase": "[accout-hash].xhst.example.com.",
+      "ImageId": "ami-1234567",
+      "PrivateSubnet1Id": "subnet-1",
+      "PrivateSubnet2Id": "subnet-2",
+      "PrivateSubnet3Id": "subnet-3",
+      "PublicSubnet1Id": "subnet-4",
+      "PublicSubnet2Id": "subnet-5",
+      "PublicSubnet3Id": "subnet-6",
+      "VpcId": "vpc-1234567"
+    }
+  }
+}
+
+
