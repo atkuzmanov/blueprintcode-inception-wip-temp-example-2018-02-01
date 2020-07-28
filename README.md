@@ -1,8 +1,6 @@
 # BLUEPRINTCODE INCEPTION
 ---
 
-**Inspired from things I have worked on or seen.**
-
 `Inspired from things I have worked on or seen.`
 
 ---
